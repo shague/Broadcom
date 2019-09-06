@@ -1,0 +1,11 @@
+[user]
+	email = sam.hague@broadcom.com
+	name = Sam Hague
+[core]
+	excludesfile = /Users/shague/.gitignore
+	sharedRepository = all
+[diff]
+    tool = vscode
+[difftool "vscode"]
+    cmd = code --wait --diff $LOCAL $REMOTE
+

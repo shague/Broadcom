@@ -1,0 +1,20 @@
+# OS generated files 
+**/*.DS_Store
+
+# Jetbrains
+.idea
+main/Cumulus/CMakeLists.txt
+
+# Visual Studio Code
+.vsc
+vsc
+vscode
+*.code-workspace
+**/*.vscode
+**/*.code-workspace
+**/*cmake-build-debug
+.history
+
+# thor builds
+**/THORB0_SIGNED_0001_DEBUG
+
