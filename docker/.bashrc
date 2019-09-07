@@ -10,6 +10,8 @@ fi
 
 # User specific aliases and functions
 
+export PATH=$PATH:/opt/cmake/bin
+
 # Bind Page UP/Page DOWN to the history search
 bind '"\e[A":history-search-backward'
 bind '"\e[B":history-search-forward'
