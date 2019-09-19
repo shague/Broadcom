@@ -10,11 +10,14 @@ fi
 
 # User specific aliases and functions
 
-export PATH=$PATH:/opt/cmake/bin
-
 # Bind Page UP/Page DOWN to the history search
 bind '"\e[A":history-search-backward'
 bind '"\e[B":history-search-forward'
+
+export USER=sh891700
+export KERNEL_VER="3.10.0-957"
+export KERNEL_DIR="/usr/src/kernels/3.10.0-957.27.2.el7.x86_64"
+export PATH="./:$PATH"
 
 # share history across shells
 export HISTCONTROL=ignoredups:erasedups  # no duplicate entries
@@ -33,8 +36,16 @@ parse_git_branch_paren() {
 
 export PS1='\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\w\[\033[01;31m\]$(parse_git_branch_paren)\[\033[00m\]\$ '
 
-export repo=rel_nxt_216.0
-alias cdthor="cd /git/${repo}/main/Cumulus/firmware/THOR"
+alias cdthor="cd main/Cumulus/firmware/THOR"
+alias tclean="rm -rf obj;rm -rf THOR*"
+alias tcleanall="rm -rf obj;rm -rf THOR*;make clobber"
+alias tbuild="./make_thor_pkg.sh CRID=0001 RV=B debug VERBOSE=no < ~/sign.txt"
+
+function mk_sign {
+		local -r pw=${1:?"Specify a password"}
+		echo $pw > ~/sign.txt
+		chmod 600 ~/sign.txt
+}
 
 function glog_header {
     echo "Hash    Author Date  Commit Date  Author               Subject"
