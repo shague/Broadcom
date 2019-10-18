@@ -32,6 +32,7 @@ RUN yum update -y \
     perl-WWW-Mechanize \
     sudo \
     tcl-devel \
+    npm \
  && ln -sf /usr/bin/cmake3 /usr/bin/cmake \
  && ln -sf /usr/bin/perl /usr/local/bin \
  && yum clean all
