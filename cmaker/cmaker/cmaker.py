@@ -1,6 +1,36 @@
+import logging
 from argparse import ArgumentParser
 import os
 from enum import Enum
+
+logger = logging.getLogger(__name__)
+ch = None
+fh = None
+
+
+def debug():
+    ch.setLevel(logging.DEBUG)
+    # logger.setLevel(min([ch.level, fh.level]))
+
+
+class Logger:
+    def __init__(self, console_level=logging.INFO, file_level=logging.DEBUG):
+        global logger
+        global ch
+        global fh
+
+        logger = logging.getLogger()
+        formatter = logging.Formatter('%(asctime)s | %(levelname).3s | %(name)-20s | %(lineno)04d | %(message)s')
+        ch = logging.StreamHandler()
+        ch.setLevel(console_level)
+        ch.setFormatter(formatter)
+        logger.addHandler(ch)
+        fh = logging.FileHandler("/tmp/cmaker.txt", "w")
+        fh.setLevel(file_level)
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
+        logger.setLevel(min([ch.level, fh.level]))
+
 
 cmake_template = '''
 cmake_minimum_required(VERSION 3.14)
@@ -89,7 +119,7 @@ def process_line(line: str) -> None:
     to extract the desired data.
     """
     # Only process compile lines.
-    if not line.startswith("arm-none-eabi-gcc"):
+    if not (line.startswith("arm-none-eabi-gcc") or line.startswith("gcc")):
         return
 
     # Add a path prefix for lines where the path has changed due to different make calls.
@@ -137,7 +167,7 @@ def make_cmakelist(args):
     fname = args.outdir + "/CMakeLists.txt"
     with open(fname, "w") as f:
         f.write(output)
-        print("{} has been written".format(fname))
+        logger.info("{} has been written".format(fname))
 
 
 def parse_build(args):
@@ -145,10 +175,10 @@ def parse_build(args):
     Parse a build output file to extract data and create the CMakeLists.txt file.
     """
     if os.path.isfile(args.buildfile) is False:
-        print("{} is missing".format(args.buildfile))
+        logger.warning("{} is missing".format(args.buildfile))
         return
 
-    print("Parsing {}...".format(args.buildfile))
+    logger.info("Parsing {}...".format(args.buildfile))
     with open(args.buildfile) as f:
         for line in f:
             process_line(line)
@@ -165,6 +195,7 @@ def parse_build(args):
 
 def create_parser():
     parser = ArgumentParser(prog="python cmaker", description="Create a CMakeFiles.txt for thor")
+    parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity level")
     parser.add_argument("-V", "--version", action="version",
                         version="%(prog)s (version {version})".format(version="0.0.1"))
     parser.add_argument("-o", "--outdir", help="the path to the output dir. Default: /tmp", default="/tmp")
@@ -181,6 +212,8 @@ def parse_args():
 
 def run():
     args = parse_args()
+    if args.verbose > 0:
+        logg.debug()
     parse_build(args)
 
 
