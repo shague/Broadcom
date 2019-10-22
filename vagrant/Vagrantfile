@@ -10,7 +10,7 @@ Vagrant.configure("2") do |config|
   config.vm.provision :shell, :inline => "sudo rm /etc/localtime && sudo ln -s /usr/share/zoneinfo/America/New_York /etc/localtime", run: "always"
 
   # vagrant requires a static IP when using NFS.
-  # Change the ip to an avialable address.
+  # Change the ip to an available address.
   config.vm.network "private_network", ip: "192.168.56.10", name: "vboxnet0"
 
   config.vm.provision "shell", path: "bootstrap.sh"
@@ -34,7 +34,7 @@ Vagrant.configure("2") do |config|
   #end
 end
 
-# Set vagrant to not create it's own vboxnet0.
+# Set vagrant to not create its own vboxnet0.
 class VagrantPlugins::ProviderVirtualBox::Action::Network
   def dhcp_server_matches_config?(dhcp_server, config)
     true
