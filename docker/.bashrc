@@ -10,10 +10,13 @@ fi
 
 # User specific aliases and functions
 
-# Bind Page UP/Page DOWN to the history search
-bind '"\e[A":history-search-backward'
-bind '"\e[B":history-search-forward'
+if [[ "$-" =~ "i" ]]; then
+    # Bind Page UP/Page DOWN to the history search
+    bind '"\e[A":history-search-backward'                                                                                                              
+    bind '"\e[B":history-search-forward'
+fi
 
+export PATH=/opt/cmake/bin:$PATH
 export USER=sh891700
 export KERNEL_VER="3.10.0-957"
 export KERNEL_DIR="/usr/src/kernels/3.10.0-957.27.2.el7.x86_64"
@@ -40,6 +43,7 @@ alias cdthor="cd main/Cumulus/firmware/THOR"
 alias tclean="rm -rf obj;rm -rf THOR*"
 alias tcleanall="rm -rf obj;rm -rf THOR*;make clobber"
 alias tbuild="./make_thor_pkg.sh CRID=0001 RV=B debug VERBOSE=no < ~/sign.txt"
+alias gits='git status --ignore-submodules -uno'
 
 function mk_sign {
 		local -r pw=${1:?"Specify a password"}
