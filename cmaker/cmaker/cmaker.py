@@ -108,14 +108,15 @@ def process_line(line: str) -> None:
     to extract the desired data.
     """
     # Only process compile lines.
-    if not (line.startswith("arm-none-eabi-gcc") or line.startswith("gcc")):
+    if not (line.startswith("arm-none-eabi-gcc") or line.startswith("gcc") or line.startswith("armcc")):
         return
 
     # Add a path prefix for lines where the path has changed due to different make calls.
+    prefix = ""
     if "-Ibsp" in line:
         prefix = "../RTOS/Nucleus_3/"
-    else:
-        prefix = ""
+    if "bc1" in line:
+        prefix = "../bc1/"
 
     pstatus = ParseStatus.CONT
     tokens = line.split()
@@ -173,8 +174,9 @@ def parse_build(args):
             process_line(line)
 
     # Further correct the lists to include the compiler and to remove unneeded stuff.
-    includes.add("/opt/projects/ccxsw_tools/mentor_graphics/mgc-2018.070/toolchains/arm-none-eabi.2016.11"
-                 "/arm-none-eabi/include")
+    if args.platform is "thor":
+        includes.add("/opt/projects/ccxsw_tools/mentor_graphics/mgc-2018.070/toolchains/arm-none-eabi.2016.11"
+                     "/arm-none-eabi/include")
     # TODO: Below one is not so bad but it didn't remove from the set as expected. Possibly the wrong API
     # or the /'s need to be escaped
     # includes.remove("../../../common")
@@ -189,6 +191,7 @@ def create_parser():
                         version="%(prog)s (version {version})".format(version="0.0.1"))
     parser.add_argument("-o", "--outdir", help="the path to the output dir. Default: /tmp", default="/tmp")
     parser.add_argument("-n", "--name", help="the project name. Default: Cumulus", default="Cumulus")
+    parser.add_argument("-p", "--platform", help="the platform, thor or cmba. Default thor.", default="thor")
     parser.add_argument("buildfile", help="the build output text file")
     return parser
 
