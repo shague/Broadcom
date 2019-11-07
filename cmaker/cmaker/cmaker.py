@@ -4,32 +4,21 @@ import os
 from enum import Enum
 
 logger = logging.getLogger(__name__)
-ch = None
-fh = None
+formatter = logging.Formatter('%(asctime)s | %(levelname).3s | %(name)-20s | %(lineno)04d | %(message)s')
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+fh = logging.FileHandler("/tmp/cmaker.txt", "w")
+fh.setLevel(logging.INFO)
+fh.setFormatter(formatter)
+logger.addHandler(fh)
+logger.setLevel(min([ch.level, fh.level]))
 
 
 def debug():
     ch.setLevel(logging.DEBUG)
     # logger.setLevel(min([ch.level, fh.level]))
-
-
-class Logger:
-    def __init__(self, console_level=logging.INFO, file_level=logging.DEBUG):
-        global logger
-        global ch
-        global fh
-
-        logger = logging.getLogger()
-        formatter = logging.Formatter('%(asctime)s | %(levelname).3s | %(name)-20s | %(lineno)04d | %(message)s')
-        ch = logging.StreamHandler()
-        ch.setLevel(console_level)
-        ch.setFormatter(formatter)
-        logger.addHandler(ch)
-        fh = logging.FileHandler("/tmp/cmaker.txt", "w")
-        fh.setLevel(file_level)
-        fh.setFormatter(formatter)
-        logger.addHandler(fh)
-        logger.setLevel(min([ch.level, fh.level]))
 
 
 cmake_template = '''
@@ -213,7 +202,7 @@ def parse_args():
 def run():
     args = parse_args()
     if args.verbose > 0:
-        logg.debug()
+        debug()
     parse_build(args)
 
 
