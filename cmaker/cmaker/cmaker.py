@@ -177,6 +177,10 @@ def parse_build(args):
     if args.platform is "thor":
         includes.add("/opt/projects/ccxsw_tools/mentor_graphics/mgc-2018.070/toolchains/arm-none-eabi.2016.11"
                      "/arm-none-eabi/include")
+        
+    elif args.platform is "cmba":
+        includes.add("/projects/armds/include")
+
     # TODO: Below one is not so bad but it didn't remove from the set as expected. Possibly the wrong API
     # or the /'s need to be escaped
     # includes.remove("../../../common")
@@ -191,7 +195,7 @@ def create_parser():
                         version="%(prog)s (version {version})".format(version="0.0.1"))
     parser.add_argument("-o", "--outdir", help="the path to the output dir. Default: /tmp", default="/tmp")
     parser.add_argument("-n", "--name", help="the project name. Default: Cumulus", default="Cumulus")
-    parser.add_argument("-p", "--platform", help="the platform, thor or cmba. Default thor.", default="thor")
+    parser.add_argument("-p", "--platform", help="the platform, thor or cmba(wh+). Default thor.", default="thor")
     parser.add_argument("buildfile", help="the build output text file")
     return parser
 
