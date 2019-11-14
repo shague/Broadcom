@@ -108,31 +108,34 @@ def process_line(line: str) -> None:
     to extract the desired data.
     """
     # Only process compile lines.
-    if not (line.startswith("arm-none-eabi-gcc") or line.startswith("gcc") or line.startswith("armcc")):
+    if not (line.startswith("arm-none-eabi-gcc") or line.startswith("gcc") or line.startswith("  gcc") or line.startswith("armcc")):
         return
 
     # Add a path prefix for lines where the path has changed due to different make calls.
-    prefix = ""
+    inc_prefix = ""
+    src_prefix = ""
     if "-Ibsp" in line:
-        prefix = "../RTOS/Nucleus_3/"
-    if "bc1" in line:
-        prefix = "../bc1/"
+        inc_prefix = src_prefix = "../RTOS/Nucleus_3/"
+    elif "bc1" in line:
+        inc_prefix = src_prefix = "../bc1/"
+    elif "/arch/x86/include" in line:
+        inc_prefix = "/git/usr/src/kernels/3.10.0-957.27.2.el7.x86_64/"
 
     pstatus = ParseStatus.CONT
     tokens = line.split()
     for token in tokens:
         if pstatus == ParseStatus.MORE:
-            extract_include(token, prefix, pstatus)
+            extract_include(token, inc_prefix, pstatus)
             pstatus = ParseStatus.CONT
             continue
-        pstatus = extract_include(token, prefix, pstatus)
+        pstatus = extract_include(token, inc_prefix, pstatus)
         if pstatus == ParseStatus.MORE:
             continue
 
         if extract_define(token) == ParseStatus.FOUND:
             continue
 
-        if extract_source(token, prefix) == ParseStatus.FOUND:
+        if extract_source(token, src_prefix) == ParseStatus.FOUND:
             continue
 
 
@@ -180,6 +183,9 @@ def parse_build(args):
         
     elif args.platform is "cmba":
         includes.add("/projects/armds/include")
+
+    elif args.platform is "bnxt_en":
+        pass
 
     # TODO: Below one is not so bad but it didn't remove from the set as expected. Possibly the wrong API
     # or the /'s need to be escaped
