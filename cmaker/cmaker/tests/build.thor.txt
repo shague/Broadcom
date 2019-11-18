@@ -1,0 +1,6 @@
+Building Thor debug firmware
+make -j 4  DEBUG=yes RELEASE=no buildflags pkg
+arm-none-eabi-gcc ../core/qos_profiles/thor_1p.c -o obj/thorB0_signed_0001_debug/obj_MGC/thor_1p.elf -I "../RTOS/Nucleus_3/os/include" -I "../RTOS/Nucleus_3/os/include/arch/arm"
+arm-none-eabi-gcc -I "../RTOS/Nucleus_3/os/include" -I "../RTOS/Nucleus_3/os/include/arch/arm" -DBRCM_PRIMATE_MODS=1 -oobj/thorB0_signed_0001_debug/obj_MGC/hwrm_comm_nucleus.o -c ../core/HWRM/hwrm_comm_nucleus.c -Werror -funwind-tables -fstack-usage -DPLDM_FW_UPDATE
+make -C ../RTOS/Nucleus_3 PLATFORM=primate_r8_thor USER_CONFIG=th_a.config TOOLSET=csgnu_arm VERBOSE=1 -j  all
+arm-none-eabi-gcc   -I.  -Ibsp/primate_r8_thor/include  -Ibsp/primate_r8_thor/include/bsp/arch/plat-versatile_exp  -Ios/arch/arm/tool-csgnu_arm  -Ios/include  -Ios/include/arch/arm  -Ios/include/arch/arm/tool-csgnu_arm bsp/primate_r8_thor/arch/plat-versatile_exp/versatile_cortexr7.c -o output/csgnu_arm/primate_r8_thor/th_a/objs/bsp/primate_r8_thor/arch/plat-versatile_exp/versatile_cortexr7.o

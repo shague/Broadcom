@@ -1,0 +1,13 @@
+make -C ../src/bnxtmt/device/linux/kernel REL_INST_DIR=/git/int_nxt/main/Cumulus/util/bnxt-mt/build/release rel MODE=
+make[1]: Entering directory `/git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/device/linux/kernel'
+make -j 4 -C /usr/src/kernels/3.10.0-957.27.2.el7.x86_64 ARCH=x86_64 CROSS_COMPILE= BUILD_VAR=rel M=`pwd` modules
+make[2]: Entering directory `/usr/src/kernels/3.10.0-957.27.2.el7.x86_64'
+test -e include/generated/autoconf.h -a -e include/config/auto.conf || (		\
+mkdir -p /git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/device/linux/kernel/.tmp_versions ; rm -f /git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/device/linux/kernel/.tmp_versions/*
+  gcc -Wp,-MD,/git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/device/linux/kernel/.mm.o.d  -nostdinc -isystem /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include -I./arch/x86/include -Iarch/x86/include/generated -D__KERNEL__ -Wall -o /git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/device/linux/kernel/.tmp_mm.o /git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/device/linux/kernel/mm.c
+make[2]: Entering directory `/git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/tcl/unix'
+CC ./../generic/regexec.c
+make  -j 4 -C ./../../../tcl/unix ARCH=x86_64 MODE= CROSS_COMPILE= CROSS_COMPILE_INCLUDE= CROSS_COMPILE_LIB=
+make[2]: Entering directory `/git/int_nxt/main/Cumulus/util/bnxt-mt/src/bnxtmt/tcl/unix'
+CC ./../generic/regcomp.c
+gcc -c -fPIC  -MMD -g -I. -I./../unix -I./../generic -I./../tcl_dbg -I./../../../../../../common/nitro-headers/headers ./../generic/regcomp.c -o obj/regcomp.o

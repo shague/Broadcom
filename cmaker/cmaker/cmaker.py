@@ -1,6 +1,7 @@
 import logging
 from argparse import ArgumentParser
 import os
+import re
 from enum import Enum
 
 logger = logging.getLogger(__name__)
@@ -10,15 +11,26 @@ ch.setLevel(logging.INFO)
 ch.setFormatter(formatter)
 logger.addHandler(ch)
 fh = logging.FileHandler("/tmp/cmaker.txt", "w")
-fh.setLevel(logging.INFO)
+fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 logger.setLevel(min([ch.level, fh.level]))
 
 
-def debug():
-    ch.setLevel(logging.DEBUG)
-    # logger.setLevel(min([ch.level, fh.level]))
+def debug(ch_level=logging.INFO, fh_level=logging.DEBUG):
+    ch.setLevel(ch_level)
+    ch.setLevel(fh_level)
+    logger.setLevel(min(ch_level, fh_level))
+
+
+def logfile(path: str):
+    global fh
+    logger.removeHandler(fh)
+    fh.close()
+    fh = logging.FileHandler(path, "w")
+    fh.setLevel(logging.DEBUG)
+    fh.setFormatter(formatter)
+    logger.addHandler(fh)
 
 
 cmake_template = '''
@@ -39,6 +51,16 @@ add_executable({}
 '''
 
 
+pwd = ""
+mkdir = ""
+blddir = ""
+re_mkdir = re.compile(r"^make.* Entering directory `(\S*)'")
+re_cc = re.compile(r"^\s*(gcc|gcc|arm-none-eabi-gcc|armcc)")
+re_def = re.compile(r"-D(\S*)")
+re_inc = re.compile(r"-I (\S*)|-I(\S*)")
+re_src = re.compile(r"\s*gcc.*\s(\S*\.c)")
+cwd = os.getcwd()
+
 defines = set([])
 includes = set([])
 sources = set([])
@@ -57,86 +79,118 @@ class ParseStatus(Enum):
     MORE = 3
 
 
-def extract_define(token: str) -> ParseStatus:
+def get_prefix_value(value: str, prefix: str, strip: str):
+    pvalue = value.strip('"')
+    if strip != "" and pvalue.startswith(strip):
+        pvalue = pvalue[len(strip):]
+    elif prefix != "" and not pvalue.startswith("/"):
+        pvalue = (prefix + "/" + pvalue)
+    logger.debug("pvalue: {}".format(pvalue))
+    return pvalue
+
+
+def get_rel_path(blddir, prefix):
+    norm_prefix_path = os.path.normpath(prefix)
+    rel_path = os.path.relpath(norm_prefix_path, blddir)
+    logger.debug("add: {}".format(rel_path))
+    return rel_path
+
+
+def extract_defines(line: str) -> None:
     """
     Extract defines of the form -Ddefinition.
     """
-    if token.startswith("-D"):
-        define = token[len("-D"):]
-        if define:
-            defines.add(define)
-        return ParseStatus.FOUND
-    return ParseStatus.CONT
+    # regex to get any -D defines.
+    for m in re_def.finditer(line):
+        defines.add(m.group(1))
 
 
-def extract_include(token: str, prefix: str, status=ParseStatus.CONT) -> ParseStatus:
+def extract_includes(line: str, prefix: str, blddir: str) -> None:
     """
     Extract includes of the forms -I includedir or -Iincludedir.
 
     For the form, -I includedir, the value ParseStatus.MORE will be returned. The caller must
     call again with the next token and ParseStatus.MORE to be extracted.
     """
-    if token.startswith("-I"):
-        value = token[len("-I"):]
-        if value:
-            includes.add(prefix + value.strip('"'))
-            return ParseStatus.FOUND
-        else:  # this indicates the -I includedir so need to get the next token to complete the extraction.
-            return ParseStatus.MORE
-    else:  # the final token needed for the -I includedir case.
-        if status == ParseStatus.MORE and token:
-            includes.add(prefix + token.strip('"'))
-            return ParseStatus.FOUND
-    return ParseStatus.CONT
+    # regex to get any -I includes. The iterate over the list to add
+    # any path prefix, normalize the path and then get a relative path from the build dir.
+    for m in re_inc.finditer(line):
+        # group(1): -I /path, group(2): -I/path
+        group = m.group(1) if m.group(1) else m.group(2)
+        rel_path = get_rel_path(blddir, get_prefix_value(group, prefix, ""))
+        includes.add(rel_path)
 
 
-def extract_source(token: str, prefix: str) -> ParseStatus:
+def extract_source(line: str, prefix: str, blddir: str) -> None:
     """
     Extract source files that end with .c.
     """
-    if ".c" in token:
-        sources.add(prefix + token)
-        return ParseStatus.FOUND
-    return ParseStatus.CONT
+    # regex to get a .c file.
+    # Then add any path prefix, normalize the path and then get a relative path from the build dir.
+    m = re_src.search(line)
+    if m:
+        rel_path = get_rel_path(blddir, get_prefix_value(m.group(1), prefix, ""))
+        sources.add(rel_path)
 
 
-def process_line(line: str) -> None:
+def extract_mkdir(line: str) -> None:
+    global mkdir
+    m = re_mkdir.search(line)
+    if m:
+        mkdir = m.group(1)
+        if mkdir.startswith("/usr"):
+            mkdir = "/git" + mkdir
+        logger.debug("new mkdir: {}".format(mkdir))
+
+
+def extract_cc(line: str) -> bool:
+    m = re_cc.search(line)
+    if m:
+        return True
+    return False
+
+
+def process_line(args, line: str) -> None:
     """
     Process each line and extra the wanted values.
 
     The line is split into tokens that are space-delimited. Each token is parsed by different parsers
     to extract the desired data.
     """
-    # Only process compile lines.
-    if not (line.startswith("arm-none-eabi-gcc") or line.startswith("gcc") or line.startswith("  gcc") or line.startswith("armcc")):
+
+    # Get make directories if the make changes the cwd.
+    if line.startswith("make"):
+        extract_mkdir(line)
         return
 
+    # Only process compile lines.
+    if not extract_cc(line):
+        return
+
+    inc_prefix, src_prefix, _ = get_fixups(args, line, mkdir)
+    extract_defines(line)
+    extract_includes(line, inc_prefix, args.blddir)
+    extract_source(line, src_prefix, args.blddir)
+
+
+def get_fixups(args, line: str, mkdir: str):
     # Add a path prefix for lines where the path has changed due to different make calls.
+    strip = ""
     inc_prefix = ""
     src_prefix = ""
-    if "-Ibsp" in line:
-        inc_prefix = src_prefix = "../RTOS/Nucleus_3/"
-    elif "bc1" in line:
-        inc_prefix = src_prefix = "../bc1/"
-    elif "/arch/x86/include" in line:
-        inc_prefix = "/git/usr/src/kernels/3.10.0-957.27.2.el7.x86_64/"
 
-    pstatus = ParseStatus.CONT
-    tokens = line.split()
-    for token in tokens:
-        if pstatus == ParseStatus.MORE:
-            extract_include(token, inc_prefix, pstatus)
-            pstatus = ParseStatus.CONT
-            continue
-        pstatus = extract_include(token, inc_prefix, pstatus)
-        if pstatus == ParseStatus.MORE:
-            continue
+    if args.platform == "thor" or args.platform == "cmba":
+        # These builds don't print the Entering directory string and run the build
+        # in parallel so it it difficult to get the prefixes matched up.
+        if "-Ibsp" in line:
+            inc_prefix = src_prefix = "../RTOS/Nucleus_3"
+        elif "bc1" in line:
+            inc_prefix = src_prefix = "../bc1"
+    elif args.platform == "bnxt-mt" or args.platform == "lcdiag" or args.platform == "bnxt_en":
+        inc_prefix = src_prefix = mkdir
 
-        if extract_define(token) == ParseStatus.FOUND:
-            continue
-
-        if extract_source(token, src_prefix) == ParseStatus.FOUND:
-            continue
+    logger.debug("strip: {}, inc_prefix: {}, src_prefix: {}".format(strip, inc_prefix, src_prefix))
+    return inc_prefix, src_prefix, strip
 
 
 def makelststr(tokens: set) -> str:
@@ -174,24 +228,31 @@ def parse_build(args):
     logger.info("Parsing {}...".format(args.buildfile))
     with open(args.buildfile) as f:
         for line in f:
-            process_line(line)
+            process_line(args, line)
 
     # Further correct the lists to include the compiler and to remove unneeded stuff.
-    if args.platform is "thor":
+    add_extras(args)
+
+    make_cmakelist(args)
+
+
+def add_extras(args):
+    if args.platform == "thor":
         includes.add("/opt/projects/ccxsw_tools/mentor_graphics/mgc-2018.070/toolchains/arm-none-eabi.2016.11"
                      "/arm-none-eabi/include")
-        
-    elif args.platform is "cmba":
+
+    elif args.platform == "cmba":
         includes.add("/projects/armds/include")
 
-    elif args.platform is "bnxt_en":
+    elif args.platform == "bnxt_en":
+        pass
+
+    elif args.platform == "bnxt-mt":
         pass
 
     # TODO: Below one is not so bad but it didn't remove from the set as expected. Possibly the wrong API
     # or the /'s need to be escaped
     # includes.remove("../../../common")
-
-    make_cmakelist(args)
 
 
 def create_parser():
@@ -199,9 +260,11 @@ def create_parser():
     parser.add_argument("-v", "--verbose", action="count", default=0, help="increase verbosity level")
     parser.add_argument("-V", "--version", action="version",
                         version="%(prog)s (version {version})".format(version="0.0.1"))
+
+    parser.add_argument("-b", "--blddir", help="the path to the dir where the make build started.")
     parser.add_argument("-o", "--outdir", help="the path to the output dir. Default: /tmp", default="/tmp")
     parser.add_argument("-n", "--name", help="the project name. Default: Cumulus", default="Cumulus")
-    parser.add_argument("-p", "--platform", help="the platform, thor or cmba(wh+). Default thor.", default="thor")
+    parser.add_argument("-p", "--platform", help="the platform, thor or cmba(wh+). Default thor.", default=None)
     parser.add_argument("buildfile", help="the build output text file")
     return parser
 
@@ -212,12 +275,22 @@ def parse_args():
     return args
 
 
-def run():
-    args = parse_args()
+def validate_args(args):
+    if not args.blddir:
+        print("Using . as blddir")
+        args.blddir = "."
+    return True
+
+
+def run(args):
     if args.verbose > 0:
-        debug()
+        debug(logging.DEBUG, logging.DEBUG)
+    if not validate_args(args):
+        return
+    logger.info("platform: {}".format(args.platform))
     parse_build(args)
 
 
 if __name__ == "__main__":
-    run()
+    pargs = parse_args()
+    run(pargs)

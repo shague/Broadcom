@@ -1,0 +1,3 @@
+make[1]: Entering directory `/usr/src/kernels/3.10.0-957.27.2.el7.x86_64'
+make -f scripts/Makefile.build obj=/git/nxt-linux-drivers/v3
+  gcc -Wp,-MD,/git/nxt-linux-drivers/v3/.bnxt.o.d  -nostdinc -isystem /usr/lib/gcc/x86_64-redhat-linux/4.8.5/include -I./arch/x86/include -Iarch/x86/include/generated -DMODULE -o /git/nxt-linux-drivers/v3/.tmp_bnxt.o /git/nxt-linux-drivers/v3/bnxt.c
