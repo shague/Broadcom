@@ -10,7 +10,8 @@ ch = logging.StreamHandler()
 ch.setLevel(logging.INFO)
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-fh = logging.FileHandler("/tmp/cmaker.txt", "w")
+logfname = "/tmp/cmaker.txt"
+fh = logging.FileHandler(logfname, "w")
 fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)
 logger.addHandler(fh)
@@ -25,8 +26,10 @@ def debug(ch_level=logging.INFO, fh_level=logging.DEBUG):
 
 def logfile(path: str):
     global fh
+    global logfname
     logger.removeHandler(fh)
     fh.close()
+    logfname = path
     fh = logging.FileHandler(path, "w")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(formatter)
@@ -54,11 +57,11 @@ add_executable({}
 pwd = ""
 mkdir = ""
 blddir = ""
-re_mkdir = re.compile(r"^make.* Entering directory `(\S*)'")
-re_cc = re.compile(r"^\s*(gcc|gcc|arm-none-eabi-gcc|armcc)")
-re_def = re.compile(r"-D(\S*)")
-re_inc = re.compile(r"-I (\S*)|-I(\S*)")
-re_src = re.compile(r"\s*gcc.*\s(\S*\.c)")
+re_mkdir = re.compile(r"^make.* Entering directory `(\S*)'")  # group is the directory after Entering directory
+re_cc = re.compile(r"^\s*(gcc|gcc|arm-none-eabi-gcc|armcc)")  # return the line if a compiler call is found
+re_def = re.compile(r"-D(\S*)")  # return definitions after -D
+re_inc = re.compile(r"-I (\S*)|-I(\S*)")  # return includes after -I
+re_src = re.compile(r"\s*gcc.*\s(\S*\.c)")  # return source files found in gcc lines
 cwd = os.getcwd()
 
 defines = set([])
@@ -80,6 +83,9 @@ class ParseStatus(Enum):
 
 
 def get_prefix_value(value: str, prefix: str, strip: str):
+    """
+
+    """
     pvalue = value.strip('"')
     if strip != "" and pvalue.startswith(strip):
         pvalue = pvalue[len(strip):]
@@ -134,16 +140,23 @@ def extract_source(line: str, prefix: str, blddir: str) -> None:
 
 
 def extract_mkdir(line: str) -> None:
+    """
+    Extract the Make directory lines by looking for Entering directory...
+    """
     global mkdir
     m = re_mkdir.search(line)
     if m:
         mkdir = m.group(1)
+        # /usr is in /git on the mac
         if mkdir.startswith("/usr"):
             mkdir = "/git" + mkdir
         logger.debug("new mkdir: {}".format(mkdir))
 
 
 def extract_cc(line: str) -> bool:
+    """
+    Extract the compiler lines if a compiler call is found.
+    """
     m = re_cc.search(line)
     if m:
         return True
@@ -181,11 +194,13 @@ def get_fixups(args, line: str, mkdir: str):
 
     if args.platform == "thor" or args.platform == "cmba":
         # These builds don't print the Entering directory string and run the build
-        # in parallel so it it difficult to get the prefixes matched up.
+        # in parallel so it is difficult to get the prefixes matched up.
         if "-Ibsp" in line:
-            inc_prefix = src_prefix = "../RTOS/Nucleus_3"
+            inc_prefix = src_prefix = args.blddir + "/../RTOS/Nucleus_3"
         elif "bc1" in line:
-            inc_prefix = src_prefix = "../bc1"
+            inc_prefix = src_prefix = args.blddir + "/../bc1"
+        else:
+            inc_prefix = src_prefix = args.blddir
     elif args.platform == "bnxt-mt" or args.platform == "lcdiag" or args.platform == "bnxt_en":
         inc_prefix = src_prefix = mkdir
 
@@ -226,6 +241,7 @@ def parse_build(args):
         return
 
     logger.info("Parsing {}...".format(args.buildfile))
+    logger.info("Logging to {}".format(logfname))
     with open(args.buildfile) as f:
         for line in f:
             process_line(args, line)
@@ -249,10 +265,6 @@ def add_extras(args):
 
     elif args.platform == "bnxt-mt":
         pass
-
-    # TODO: Below one is not so bad but it didn't remove from the set as expected. Possibly the wrong API
-    # or the /'s need to be escaped
-    # includes.remove("../../../common")
 
 
 def create_parser():

@@ -33,8 +33,20 @@ class Test(TestCase):
         cmaker.parse_build(self.args)
         self.assertTrue(os.path.exists(self.cmakefile))
         self.assertTrue(self.string_in_file("PLDM_FW_UPDATE"))
-        self.assertTrue(self.string_in_file("../RTOS/Nucleus_3/os/include"))
-        self.assertTrue(self.string_in_file("../core/HWRM/hwrm_comm_nucleus.c"))
+        self.assertTrue(self.string_in_file(" ../RTOS/Nucleus_3/os/include"))
+        self.assertTrue(self.string_in_file(" ../core/HWRM/hwrm_comm_nucleus.c"))
+
+    def test_parse_build_thor_git(self):
+        self.args.buildfile = "build.thor.txt"
+        self.args.platform = "thor"
+        self.args.name = "thor"
+        self.args.blddir = "/git/rel_nxt_216.0/main/Cumulus/firmware/THOR"
+        self.args.outdir = "."
+        cmaker.parse_build(self.args)
+        self.assertTrue(os.path.exists(self.cmakefile))
+        self.assertTrue(self.string_in_file("PLDM_FW_UPDATE"))
+        self.assertTrue(self.string_in_file(" ../RTOS/Nucleus_3/os/include"))
+        self.assertTrue(self.string_in_file(" ../core/HWRM/hwrm_comm_nucleus.c"))
 
     def test_parse_build_lcdiag(self):
         self.args.buildfile = "build.lcdiag.txt"
