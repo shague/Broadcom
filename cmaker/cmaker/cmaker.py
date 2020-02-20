@@ -16,6 +16,7 @@ fh.setLevel(logging.DEBUG)
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 logger.setLevel(min([ch.level, fh.level]))
+currline = 0
 
 
 def debug(ch_level=logging.INFO, fh_level=logging.DEBUG):
@@ -35,6 +36,13 @@ def logfile(path: str):
     fh.setFormatter(formatter)
     logger.addHandler(fh)
 
+
+class CustomAdapter(logging.LoggerAdapter):
+    def process(self, msg, kwargs):
+        return "[%05d] %s" % (currline, msg), kwargs
+
+
+loggerl = CustomAdapter(logger, {'currline': currline})
 
 cmake_template = '''
 cmake_minimum_required(VERSION 3.14)
@@ -59,9 +67,9 @@ mkdir = ""
 blddir = ""
 re_mkdir = re.compile(r"^make.* Entering directory `(\S*)'")  # group is the directory after Entering directory
 re_cc = re.compile(r"^\s*(gcc|gcc|arm-none-eabi-gcc|armcc)")  # return the line if a compiler call is found
-re_def = re.compile(r"-D(\S*)")  # return definitions after -D
-re_inc = re.compile(r"-I (\S*)|-I(\S*)")  # return includes after -I
-re_src = re.compile(r"\s*gcc.*\s(\S*\.c)")  # return source files found in gcc lines
+re_def = re.compile(r" -D(\S*)")  # return definitions after -D. Some defines are dropped.
+re_inc = re.compile(r"-I\s*(\S*)|-I(\S*)")  # return includes after -I
+re_src = re.compile(r"\s*(gcc|armcc).*\s(\S*\.c)")  # return source files found in gcc lines
 cwd = os.getcwd()
 
 defines = set([])
@@ -91,14 +99,14 @@ def get_prefix_value(value: str, prefix: str, strip: str):
         pvalue = pvalue[len(strip):]
     elif prefix != "" and not pvalue.startswith("/"):
         pvalue = (prefix + "/" + pvalue)
-    logger.debug("pvalue: {}".format(pvalue))
+    loggerl.debug("pvalue: {}".format(pvalue))
     return pvalue
 
 
 def get_rel_path(blddir, prefix):
     norm_prefix_path = os.path.normpath(prefix)
     rel_path = os.path.relpath(norm_prefix_path, blddir)
-    logger.debug("add: {}".format(rel_path))
+    loggerl.debug("add: {}".format(rel_path))
     return rel_path
 
 
@@ -108,7 +116,9 @@ def extract_defines(line: str) -> None:
     """
     # regex to get any -D defines.
     for m in re_def.finditer(line):
-        defines.add(m.group(1))
+        if m.group(1):
+            pvalue = m.group(1).strip('"')
+            defines.add(pvalue)
 
 
 def extract_includes(line: str, prefix: str, blddir: str) -> None:
@@ -123,8 +133,11 @@ def extract_includes(line: str, prefix: str, blddir: str) -> None:
     for m in re_inc.finditer(line):
         # group(1): -I /path, group(2): -I/path
         group = m.group(1) if m.group(1) else m.group(2)
-        rel_path = get_rel_path(blddir, get_prefix_value(group, prefix, ""))
-        includes.add(rel_path)
+        if group:
+            rel_path = get_rel_path(blddir, get_prefix_value(group, prefix, ""))
+            includes.add(rel_path)
+        else:
+            loggerl.warning("group(include) not found, m: {}, 1: {}, 2: {}".format(m.group(), m.group(1), m.group(2)))
 
 
 def extract_source(line: str, prefix: str, blddir: str) -> None:
@@ -135,8 +148,11 @@ def extract_source(line: str, prefix: str, blddir: str) -> None:
     # Then add any path prefix, normalize the path and then get a relative path from the build dir.
     m = re_src.search(line)
     if m:
-        rel_path = get_rel_path(blddir, get_prefix_value(m.group(1), prefix, ""))
-        sources.add(rel_path)
+        if m.group(2):
+            rel_path = get_rel_path(blddir, get_prefix_value(m.group(2), prefix, ""))
+            sources.add(rel_path)
+        else:
+            loggerl.warning("group(source) not found, m: {}, 1: {}, 2: {}".format(m.group(), m.group(1), m.group(2)))
 
 
 def extract_mkdir(line: str) -> None:
@@ -150,7 +166,7 @@ def extract_mkdir(line: str) -> None:
         # /usr is in /git on the mac
         if mkdir.startswith("/usr"):
             mkdir = "/git" + mkdir
-        logger.debug("new mkdir: {}".format(mkdir))
+        loggerl.debug("new mkdir: {}".format(mkdir))
 
 
 def extract_cc(line: str) -> bool:
@@ -199,12 +215,21 @@ def get_fixups(args, line: str, mkdir: str):
             inc_prefix = src_prefix = args.blddir + "/../RTOS/Nucleus_3"
         elif "bc1" in line:
             inc_prefix = src_prefix = args.blddir + "/../bc1"
-        else:
+        elif "roce_tlv" in line:
+            if "APE" in mkdir or "BONO" in mkdir or "KONG" in mkdir:
+                inc_prefix = src_prefix = args.blddir + "/.."
+            else:
+                inc_prefix = src_prefix = args.blddir
+        elif "obj_ARM/chdmpfw" in line:
+            inc_prefix = src_prefix = args.blddir + "/../chdmpfw"
+        elif "obj/cmb_a_afm" in line:
             inc_prefix = src_prefix = args.blddir
+        elif "APE_VIEW" in line or "BONO" in line or "KONG_VIEW" in line:
+            inc_prefix = src_prefix = mkdir
     elif args.platform == "bnxt-mt" or args.platform == "lcdiag" or args.platform == "bnxt_en":
         inc_prefix = src_prefix = mkdir
 
-    logger.debug("strip: {}, inc_prefix: {}, src_prefix: {}".format(strip, inc_prefix, src_prefix))
+    loggerl.debug("strip: {}, inc_prefix: {}, src_prefix: {}".format(strip, inc_prefix, src_prefix))
     return inc_prefix, src_prefix, strip
 
 
@@ -229,7 +254,7 @@ def make_cmakelist(args):
     fname = args.outdir + "/CMakeLists.txt"
     with open(fname, "w") as f:
         f.write(output)
-        logger.info("{} has been written".format(fname))
+        loggerl.info("{} has been written".format(fname))
 
 
 def parse_build(args):
@@ -242,8 +267,12 @@ def parse_build(args):
 
     logger.info("Parsing {}...".format(args.buildfile))
     logger.info("Logging to {}".format(logfname))
+
     with open(args.buildfile) as f:
         for line in f:
+            global currline
+            currline += 1
+            logger.debug("Processing line {}: {}".format(currline, line))
             process_line(args, line)
 
     # Further correct the lists to include the compiler and to remove unneeded stuff.
