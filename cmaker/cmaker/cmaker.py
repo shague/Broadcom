@@ -62,8 +62,7 @@ add_executable({}
 '''
 
 
-pwd = ""
-mkdir = ""
+mkdir = "."
 blddir = ""
 re_mkdir = re.compile(r"^make.* Entering directory `(\S*)'")  # group is the directory after Entering directory
 re_cc = re.compile(r"^\s*(gcc|gcc|arm-none-eabi-gcc|armcc)")  # return the line if a compiler call is found
@@ -117,7 +116,14 @@ def extract_defines(line: str) -> None:
     # regex to get any -D defines.
     for m in re_def.finditer(line):
         if m.group(1):
-            pvalue = m.group(1).strip('"')
+            match = m.group(1)
+            # drop "KBUILD_BASENAME=KBUILD_STR(um_gpio)" lines as cmake can't parse the ()
+            if "KBUILD" in match:
+                continue
+            if match.startswith('"') and match.endswith('"'):
+                pvalue = match.strip('"')
+            else:
+                pvalue = match
             defines.add(pvalue)
 
 
@@ -128,7 +134,7 @@ def extract_includes(line: str, prefix: str, blddir: str) -> None:
     For the form, -I includedir, the value ParseStatus.MORE will be returned. The caller must
     call again with the next token and ParseStatus.MORE to be extracted.
     """
-    # regex to get any -I includes. The iterate over the list to add
+    # regex to get any -I includes. Iterate over the includes list to add
     # any path prefix, normalize the path and then get a relative path from the build dir.
     for m in re_inc.finditer(line):
         # group(1): -I /path, group(2): -I/path
@@ -162,11 +168,14 @@ def extract_mkdir(line: str) -> None:
     global mkdir
     m = re_mkdir.search(line)
     if m:
-        mkdir = m.group(1)
+        mkdir2 = m.group(1)
         # /usr is in /git on the mac
-        if mkdir.startswith("/usr"):
-            mkdir = "/git" + mkdir
-        loggerl.debug("new mkdir: {}".format(mkdir))
+        if mkdir2.startswith("/usr"):
+            mkdir2 = "/git" + mkdir2
+
+        if mkdir != mkdir2:
+            loggerl.debug("mkdir: {}, previous: {}".format(mkdir2, mkdir))
+            mkdir = mkdir2
 
 
 def extract_cc(line: str) -> bool:
@@ -316,6 +325,10 @@ def parse_args():
     return args
 
 
+def print_args(args):
+    logger.info("args: {}".format(args))
+
+
 def validate_args(args):
     if not args.blddir:
         print("Using . as blddir")
@@ -328,7 +341,7 @@ def run(args):
         debug(logging.DEBUG, logging.DEBUG)
     if not validate_args(args):
         return
-    logger.info("platform: {}".format(args.platform))
+    print_args(args)
     parse_build(args)
 
 
