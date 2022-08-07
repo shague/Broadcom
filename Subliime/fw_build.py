@@ -46,18 +46,12 @@ class FwBuildCommand(sublime_plugin.WindowCommand):
             # Creating the panel implicitly clears any previous contents
             self.panel = self.window.create_output_panel('exec')
 
-            # Enable result navigation. The result_file_regex does
-            # the primary matching, but result_line_regex is used
-            # when build output includes some entries that only
-            # contain line/column info beneath a previous line
-            # listing the file info. The result_base_dir sets the
-            # path to resolve relative file names against.
+            # Enable result navigation.
             settings = self.panel.settings()
             settings.set(
                 'syntax',
                 'Packages/Makefile/Make Output.sublime-syntax'
             )
-            # settings.set('result_base_dir', self.repo)
 
             self.window.run_command('show_panel', {'panel': 'output.exec'})
 
