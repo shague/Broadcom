@@ -1,3 +1,7 @@
+"""
+Need to handle '-D__FILE__="Cumulus/firmware/core/qos_profiles/thor_1p.c"' lines
+"""
+
 import logging
 from argparse import ArgumentParser
 import os

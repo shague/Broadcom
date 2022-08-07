@@ -1,0 +1,72 @@
+include:
+  sms_id: [
+    # /au-tests/tests/afm/ntuple/test_flow_steering.py
+    51770, 51775, 51776,
+
+    # /au-tests/tests/fec/test_fec.py
+    53423, 53424, 53425,
+
+    # /au-tests/tests/firmware/test_error_recovery.py
+    53409, 55306, 55308, 55305, 55307, 55309,
+
+    # /au-tests/tests/firmware/test_live_upgrade.py
+    53408,
+
+    # /au-tests/tests/firmware/test_memory.py
+    56192, 56193, 56194, 56195,
+
+    # /au-tests/tests/firmware/test_warmboot_recovery.py
+    55686,
+
+    # /au-tests/tests/l2base/mtu/test_jumbo_icmp.py
+    56523,
+
+    # /au-tests/tests/l2base/pam4/test_pam4.py
+    53264, 53265, 53266,
+
+    # /au-tests/tests/nvm/test_nvm_hwrm.py
+    55664, 55677, 55660, 55667, 55658, 55659, 55666, 55678, 55674, 55825,
+    55668, 55675, 55672, 55673, 55669, 55671, 55670, 55676, 55661, 55662,
+    55663, 55657, 55655,
+
+    # /au-tests/tests/nvm/test_nvm_misc.py
+    55656, 55665,
+
+    # /au-tests/tests/nvm/test_nvm_option.py
+    55614, 55649, 55650, 55648, 55651, 55652, 55653, 55654,
+
+    # /au-tests/tests/ptp/test_ptp.py
+    55898, 55970, 55971, 55972, 55973, 55974, 56214, 56241, 56242, 56243,
+    56549, 56550, 56551, 56613, 56614, 57216, 57217,
+
+    # /au-tests/tests/ras/test_coredump.py
+    51245, 51246, 51247, 51248,
+
+    # /au-tests/tests/ras/test_crashdump.py
+    51253, 51254, 51255, 51256, 51257, 51258, 51259,
+
+    # /au-tests/tests/shapers/test_function_shaper.py
+    56464, 56465, 56466, 56467,
+
+    # /au-tests/tests/tools/test_decode_coredump.py
+    51249, 51250, 51251, 51252, 53632, 53633,
+
+    # /au-tests/tutorial/test_ping_tutorial.py
+    52608, 52970,
+  ]
+
+exclude:
+  sms_id: [
+    # /au-tests/tests/nvm/test_nvm_hwrm.py
+    55655,  # test_vpd_install
+
+    # /au-tests/tests/tools/test_decode_coredump.py
+    51258, # test_crashdump_size
+    51259, # test_crashdump_erase
+
+    # /au-tests/tests/tools/test_error_recovery.py
+    55308,  # test_error_recovery_ifaces_up_vfs
+    55309,  # test_error_recovery_srt_ifaces_up_vfs
+  ]
+
+extra_options: -v --log-cli-level=debug tests tutorial
