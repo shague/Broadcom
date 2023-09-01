@@ -17,12 +17,6 @@ set(CMAKE_CXX_COMPILER_FORCED TRUE)
 
 project({})
 
-add_custom_target(thor COMMAND /Users/shague/bin/buildthor.sh -u shague -i 127.0.0.1 -p 2021)
-add_custom_target(thor-clean-all COMMAND /Users/shague/bin/buildthor.sh -u shague -i 127.0.0.1 -p 2021 -n)
-add_custom_target(thor-dbg COMMAND /Users/shague/bin/buildthor.sh -u shague -i 127.0.0.1 -p 2021 -d -l)
-add_custom_target(thor-dbg-signed COMMAND /Users/shague/bin/buildthor.sh -u shague -i 127.0.0.1 -p 2021 -d -l -c CRID=0001 -s /home/shague/sign.txt)
-
-
 add_compile_definitions(
   {}
 )
