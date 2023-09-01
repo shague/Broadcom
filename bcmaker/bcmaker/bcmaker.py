@@ -12,12 +12,8 @@ log = logging.getLogger(__name__)
 cmake_template = '''cmake_minimum_required(VERSION 3.14)
 
 set(CMAKE_SYSTEM_NAME Generic)
-# set(CMAKE_CROSSCOMPILING TRUE)
-# set(CMAKE_SYSTEM_PROCESSOR arm)
-# set(CMAKE_C_COMPILER /usr/local/bin/arm-none-eabi-gcc)
 set(CMAKE_C_COMPILER_FORCED TRUE)
 set(CMAKE_CXX_COMPILER_FORCED TRUE)
-# set(CMAKE_TRY_COMPILE_TARGET_TYPE "STATIC_LIBRARY")
 
 project({})
 
